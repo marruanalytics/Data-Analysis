@@ -1,1 +1,61 @@
+import requests
+import json
+import csv
 
+# API Key for the YouTube API
+API_KEY = "YOUR API KEY"
+
+# Video ID of the video you want to scrape
+video_id = "YouTube VIDEO ID"
+
+# API endpoint for retrieving video information
+video_info_url = f"https://www.googleapis.com/youtube/v3/videos?part=snippet&id={video_id}&key={API_KEY}"
+
+# API endpoint for retrieving comments
+comments_url = f"https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId={video_id}&maxResults=100&key={API_KEY}"
+
+# Get video information
+video_info_response = requests.get(video_info_url)
+video_info_data = json.loads(video_info_response.text)
+
+# Extract the video title
+video_title = video_info_data['items'][0]['snippet']['title']
+
+# Initialize lists to store the comments and authors
+comments = []
+authors = []
+
+# Initialize a variable to store the next page token
+next_page_token = None
+
+# Keep making API requests until there are no more comments to retrieve
+while True:
+    # If there is a next page token, add it to the API request
+    if next_page_token:
+        comments_url = f"{comments_url}&pageToken={next_page_token}"
+
+    # Get the comments for the current page
+    comments_response = requests.get(comments_url)
+    comments_data = json.loads(comments_response.text)
+
+    # Extract the comments and authors for the current page
+    for item in comments_data['items']:
+        comment = item['snippet']['topLevelComment']['snippet']['textDisplay']
+        author = item['snippet']['topLevelComment']['snippet']['authorDisplayName']
+        comments.append(comment)
+        authors.append(author)
+
+    # Check if there is a next page token
+    if 'nextPageToken' in comments_data:
+        next_page_token = comments_data['nextPageToken']
+    else:
+        break
+
+# Write the comments, video title, and authors to a CSV file
+with open("your_file.csv", "w", newline="") as csvfile:
+    fieldnames = ["Comment", "Video Title", "Comment Author"]
+    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+    writer.writeheader()
+    for i in range(len(comments)):
+        writer.writerow({"Comment": comments[i], "Video Title": video_title, "Comment Author": authors[i]})
